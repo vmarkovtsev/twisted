@@ -430,9 +430,9 @@ if _PY3:
             to this size.
         """
         if size is None:
-            return object[offset:]
+            return memoryview(object)[offset:]
         else:
-            return object[offset:(offset + size)]
+            return memoryview(object)[offset:(offset + size)]
 
 
     def networkString(s):
