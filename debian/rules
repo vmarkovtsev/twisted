@@ -1,0 +1,168 @@
+#! /usr/bin/make -f
+
+SHELL = /bin/bash
+
+DEB_HOST_ARCH_OS ?=  $(shell dpkg-architecture -qDEB_HOST_ARCH_OS)
+
+# all versions
+PY3VERS	:= $(shell py3versions -vs)
+VER3	:= $(shell /usr/bin/python3 -c 'import sys; print(sys.version[:3])')
+
+gamesdir = debian/twisted-quotes/usr/share/games/fortunes
+
+twversion := $(subst twisted-py3,,$(notdir $(CURDIR)))
+
+ifeq (,$(findstring nodocs,$(DEB_BUILD_OPTIONS)))
+  with_docs=yes
+endif
+with_docs=
+
+build: build-stamp
+build-arch: build-stamp
+build-indep: build-stamp build-doc
+build-stamp: $(PY3VERS:%=build3-python%)
+	touch $@
+build3-python%:
+	python$* setup.py build
+	#python$*-dbg setup3.py build
+	touch $@
+
+build-doc:
+ifeq ($(with_docs),yes)
+	-pydoctor --html-write-function-pages --add-package twisted
+endif
+
+
+clean:
+	rm -rf *-stamp build-python* build3-python* build-2to3 build
+	rm -rf $(addprefix debian/,$(packages)) debian/files debian/substvars
+	rm -rf _trial_temp test.log
+	rm -rf apidocs py3
+	find . -name "*.pyc" |xargs -r rm
+	dh_clean
+
+install: build-stamp install-prereq $(PY3VERS:%=install3-python%) install-nover
+
+install-prereq: build-stamp
+	dh_testdir
+	dh_testroot
+	dh_prep
+
+install3-python%: install-prereq
+	: # python3-twisted-core
+	python$* setup.py install \
+		--root=$(CURDIR)/debian/python3-twisted-experimental --install-layout=deb
+
+	-find debian/python3-twisted-experimental -name '*.py[co]' | xargs rm -f
+	-find debian/python3-twisted-experimental -name '__pycache__' | xargs rm -rf
+ifeq (0,1)
+	rm -rf debian/python3-twisted-core/usr/lib/python$*/*-packages/twisted/python/pymodules
+
+	: # python3-twisted-bin
+ifeq ($(DEB_HOST_ARCH_OS), linux)
+	dh_movefiles -ppython3-twisted-bin \
+	  --sourcedir=debian/python3-twisted-core \
+	    $(call py_libdir,$*)/twisted/python/sendmsg.cpython-$(subst .,,$*)m.so \
+	    $(call py_libdir,$*)/twisted/test/raiser.cpython-$(subst .,,$*)m.so
+else
+	dh_movefiles -ppython3-twisted-bin \
+	  --sourcedir=debian/python3-twisted-core \
+	    $(call py_libdir,$*)/twisted/python/sendmsg.cpython-$(subst .,,$*)m.so \
+	    $(call py_libdir,$*)/twisted/test/raiser.cpython-$(subst .,,$*)m.so
+endif
+
+ifeq (0,1)
+	: # python3-twisted
+	mkdir -p debian/python-twisted/$(call py_libdir,$*)
+	sed 's/@twversion@/$(twversion)/' debian/Twisted.egg-info.in \
+		> debian/python-twisted/$(call py_libdir,$*)/Twisted-$(twversion).egg-info
+endif
+endif
+	mkdir -p debian/python3-twisted-experimental/usr/bin
+	cd bin && \
+	for i in {manhole,*tap*,trial,twistd,pyhtmlizer} {conch,lore,mail}; do \
+	  cp -r $$i "../debian/python3-twisted-experimental/usr/bin/$$i""3"; \
+	done; \
+	cd ..
+
+	: # Replace all '#!' calls to python with /usr/bin/python3
+	: # and make them executable
+	for i in `find debian/python3-twisted-* -mindepth 3 -type f`; do \
+	  sed '1s,#!.*python[^ ]*\(.*\),#! /usr/bin/python3\1,' \
+		$$i > $$i.temp; \
+	  if cmp --quiet $$i $$i.temp; then \
+	    rm -f $$i.temp; \
+	  else \
+	    mv -f $$i.temp $$i; \
+	    chmod 755 $$i; \
+	    echo "fixed interpreter: $$i"; \
+	  fi; \
+	done
+ifeq (0,1)
+	: # python-twisted-bin-dbg
+	cd py3 && python$*-dbg setup.py install \
+		--root=$(CURDIR)/debian/python3-twisted-bin-dbg --no-compile --install-layout=deb
+	find debian/python3-twisted-bin-dbg ! -type d ! -name '*.so' | xargs rm -f
+	find debian/python3-twisted-bin-dbg -depth -empty -exec rmdir {} \;
+endif
+
+install-nover:
+	: # twisted-doc
+
+
+binary-indep: build-indep install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs -i
+	#dh_installdocs -i
+ifeq ($(with_docs),yes)
+	cp -ua apidocs debian/twisted-doc/usr/share/doc/twisted-doc/
+	# Replace links to Twisted website API doc by links to the local doc. We
+	# need to compute path to the API which goes up enough in the folder
+	# hierarchy to access the doc.
+	for i in $$(cd debian/twisted-doc/usr/share/doc/twisted-doc/ && \
+	  grep -rl "http://twistedmatrix.com/documents/$(twversion)/api/" .); do \
+	  path="$$(echo $$i | sed "s:[^/]::g" | sed "s:/:../:g" | cut -c 4-)apidocs/"; \
+	  sed -i "s:http\://twistedmatrix.com/documents/$(twversion)/api/:$$path:g" \
+	  debian/twisted-doc/usr/share/doc/twisted-doc/$$i; \
+	done
+endif
+	dh_installmenu -i
+	dh_compress -i -X.py
+	dh_fixperms -i
+	dh_python3 -i
+	dh_installdeb -i
+	dh_gencontrol -i
+	dh_md5sums -i
+	dh_builddeb -i
+
+binary-arch: build-arch install
+ifeq (0,1)
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs -a
+	dh_installdocs -a
+	dh_installmenu -a
+	dh_strip -ppython-twisted-bin --dbg-package=python-twisted-bin-dbg
+	rm -rf debian/python-twisted-bin-dbg/usr/share/doc/python-twisted-bin-dbg
+	ln -s python-twisted-bin \
+	    debian/python-twisted-bin-dbg/usr/share/doc/python-twisted-bin-dbg
+ifeq (0,1)
+	dh_strip -ppython3-twisted-bin --dbg-package=python3-twisted-bin-dbg
+	rm -rf debian/python3-twisted-bin-dbg/usr/share/doc/python3-twisted-bin-dbg
+	ln -s python3-twisted-bin \
+	    debian/python3-twisted-bin-dbg/usr/share/doc/python3-twisted-bin-dbg
+endif
+	dh_compress -a -X.py
+	dh_fixperms -a
+	dh_python2 -a
+	dh_python3 -a
+	dh_installdeb -a
+	dh_shlibdeps -a
+	dh_gencontrol -a
+	dh_md5sums -a
+	dh_builddeb -a
+endif
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install install-nover install-prereq
