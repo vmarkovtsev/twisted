@@ -750,12 +750,11 @@ def downloadPage(url, file, contextFactory=None, *args, **kwargs):
 # feature equivalent.
 
 from twisted.web.error import SchemeNotSupported
-if not _PY3:
-    from twisted.web._newclient import Request, Response, HTTP11ClientProtocol
-    from twisted.web._newclient import ResponseDone, ResponseFailed
-    from twisted.web._newclient import RequestNotSent, RequestTransmissionFailed
-    from twisted.web._newclient import (
-        ResponseNeverReceived, PotentialDataLoss, _WrapperException)
+from twisted.web._newclient import Request, Response, HTTP11ClientProtocol
+from twisted.web._newclient import ResponseDone, ResponseFailed
+from twisted.web._newclient import RequestNotSent, RequestTransmissionFailed
+from twisted.web._newclient import (
+    ResponseNeverReceived, PotentialDataLoss, _WrapperException)
 
 
 
@@ -872,7 +871,7 @@ class BrowserLikePolicyForHTTPS(object):
         @rtype: L{client connection creator
             <twisted.internet.interfaces.IOpenSSLClientConnectionCreator>}
         """
-        return optionsForClientTLS(hostname.decode("ascii"),
+        return optionsForClientTLS(hostname.decode("charmap"),
                                    trustRoot=self._trustRoot)
 
 
@@ -1326,9 +1325,9 @@ class _AgentBase(object):
         Compute the string to use for the value of the I{Host} header, based on
         the given scheme, host name, and port number.
         """
-        if (scheme, port) in (('http', 80), ('https', 443)):
+        if (scheme, port) in ((b'http', 80), (b'https', 443)):
             return host
-        return '%s:%d' % (host, port)
+        return host + b':' + str(port).encode('charmap')
 
 
     def _requestWithEndpoint(self, key, endpoint, method, parsedURI,
@@ -1340,12 +1339,12 @@ class _AgentBase(object):
         # Create minimal headers, if necessary:
         if headers is None:
             headers = Headers()
-        if not headers.hasHeader('host'):
+        if not headers.hasHeader(b'host'):
             headers = headers.copy()
             headers.addRawHeader(
-                'host', self._computeHostValue(parsedURI.scheme, parsedURI.host,
-                                               parsedURI.port))
-
+                b'host',
+                self._computeHostValue(parsedURI.scheme, parsedURI.host,
+                                       parsedURI.port))
         d = self._pool.getConnection(key, endpoint)
         def cbConnected(proto):
             return proto.request(
