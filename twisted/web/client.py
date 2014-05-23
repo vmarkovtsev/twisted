@@ -328,7 +328,7 @@ class HTTPClientFactory(protocol.ClientFactory):
     port = None
     path = None
 
-    def __init__(self, url, method=b'GET', postdata=None, headers=None,
+    def __init__(self, url, method='GET', postdata=None, headers=None,
                  agent=b"Twisted PageGetter", timeout=0, cookies=None,
                  followRedirect=True, redirectLimit=20,
                  afterFoundGet=False):
@@ -603,6 +603,8 @@ class URI(object):
         @rtype: L{URI}
         @return: Parsed URI instance.
         """
+        if not isinstance(uri, bytes):
+            raise TypeError("uri must be bytes, not a string")
         uri = uri.strip()
         scheme, netloc, path, params, query, fragment = http.urlparse(uri)
 
@@ -751,15 +753,11 @@ def downloadPage(url, file, contextFactory=None, *args, **kwargs):
 # feature equivalent.
 
 from twisted.web.error import SchemeNotSupported
-if not _PY3:
-    from twisted.web._newclient import Request, Response, HTTP11ClientProtocol
-    from twisted.web._newclient import ResponseDone, ResponseFailed
-    from twisted.web._newclient import RequestNotSent, RequestTransmissionFailed
-    from twisted.web._newclient import (
-        ResponseNeverReceived, PotentialDataLoss, _WrapperException)
-
-
-
+from twisted.web._newclient import Request, Response, HTTP11ClientProtocol
+from twisted.web._newclient import ResponseDone, ResponseFailed
+from twisted.web._newclient import RequestNotSent, RequestTransmissionFailed
+from twisted.web._newclient import (
+    ResponseNeverReceived, PotentialDataLoss, _WrapperException)
 try:
     from OpenSSL import SSL
 except ImportError:
@@ -873,7 +871,7 @@ class BrowserLikePolicyForHTTPS(object):
         @rtype: L{client connection creator
             <twisted.internet.interfaces.IOpenSSLClientConnectionCreator>}
         """
-        return optionsForClientTLS(hostname.decode("ascii"))
+        return optionsForClientTLS(hostname.decode("charmap"))
 
 
 
@@ -1113,7 +1111,7 @@ class _RetryingHTTP11ClientProtocol(object):
         requirement may be relaxed in the future, and PUT added to approved
         method list.
         """
-        if method not in ("GET", "HEAD", "OPTIONS", "DELETE", "TRACE"):
+        if method not in (b"GET", b"HEAD", b"OPTIONS", b"DELETE", b"TRACE"):
             return False
         if not isinstance(exception, (RequestNotSent, RequestTransmissionFailed,
                                       ResponseNeverReceived)):
@@ -1293,7 +1291,7 @@ class HTTPConnectionPool(object):
             closed.
         """
         results = []
-        for protocols in self._connections.itervalues():
+        for protocols in self._connections.values():
             for p in protocols:
                 results.append(p.abort())
         self._connections = {}
@@ -1326,9 +1324,9 @@ class _AgentBase(object):
         Compute the string to use for the value of the I{Host} header, based on
         the given scheme, host name, and port number.
         """
-        if (scheme, port) in (('http', 80), ('https', 443)):
+        if (scheme, port) in ((b'http', 80), (b'https', 443)):
             return host
-        return '%s:%d' % (host, port)
+        return host + b':' + str(port).encode('charmap')
 
 
     def _requestWithEndpoint(self, key, endpoint, method, parsedURI,
@@ -1340,12 +1338,11 @@ class _AgentBase(object):
         # Create minimal headers, if necessary:
         if headers is None:
             headers = Headers()
-        if not headers.hasHeader('host'):
+        if not headers.hasHeader(b'host'):
             headers = headers.copy()
-            headers.addRawHeader(
-                'host', self._computeHostValue(parsedURI.scheme, parsedURI.host,
-                                               parsedURI.port))
-
+            host_value = self._computeHostValue(
+                parsedURI.scheme, parsedURI.host, parsedURI.port)
+            headers.addRawHeader(b'host', host_value)
         d = self._pool.getConnection(key, endpoint)
         def cbConnected(proto):
             return proto.request(
@@ -1416,7 +1413,8 @@ class _StandardEndpointFactory(object):
             return TCP4ClientEndpoint(
                 self._reactor, uri.host, uri.port, **kwargs)
         elif uri.scheme == b'https':
-            tlsPolicy = self._policyForHTTPS.creatorForNetloc(uri.host, uri.port)
+            tlsPolicy = self._policyForHTTPS.creatorForNetloc(
+                uri.host, uri.port)
             return SSL4ClientEndpoint(self._reactor, uri.host, uri.port,
                                       tlsPolicy, **kwargs)
         else:
@@ -1623,7 +1621,7 @@ class _FakeUrllib2Request(object):
     def __init__(self, uri):
         self.uri = uri
         self.headers = Headers()
-        self.type, rest = splittype(self.uri)
+        self.type, rest = splittype(self.uri.decode('charmap'))
         self.host, rest = splithost(rest)
 
 
@@ -1841,7 +1839,7 @@ class ContentDecoderAgent(object):
     def __init__(self, agent, decoders):
         self._agent = agent
         self._decoders = dict(decoders)
-        self._supported = ','.join([decoder[0] for decoder in decoders])
+        self._supported = b','.join([decoder[0] for decoder in decoders])
 
 
     def request(self, method, uri, headers=None, bodyProducer=None):
@@ -1854,7 +1852,7 @@ class ContentDecoderAgent(object):
             headers = Headers()
         else:
             headers = headers.copy()
-        headers.addRawHeader('accept-encoding', self._supported)
+        headers.addRawHeader(b'accept-encoding', self._supported)
         deferred = self._agent.request(method, uri, headers, bodyProducer)
         return deferred.addCallback(self._handleResponse)
 
@@ -1864,8 +1862,9 @@ class ContentDecoderAgent(object):
         Check if the response is encoded, and wrap it to handle decompression.
         """
         contentEncodingHeaders = response.headers.getRawHeaders(
-            'content-encoding', [])
-        contentEncodingHeaders = ','.join(contentEncodingHeaders).split(',')
+            b'content-encoding', [])
+        contentEncodingHeaders = b','.join(contentEncodingHeaders).split(b',')
+        contentEncodingHeaders = b','.join(contentEncodingHeaders).split(b',')
         while contentEncodingHeaders:
             name = contentEncodingHeaders.pop().strip()
             decoder = self._decoders.get(name)
@@ -1877,9 +1876,9 @@ class ContentDecoderAgent(object):
                 break
         if contentEncodingHeaders:
             response.headers.setRawHeaders(
-                'content-encoding', [','.join(contentEncodingHeaders)])
+                b'content-encoding', [b','.join(contentEncodingHeaders)])
         else:
-            response.headers.removeHeader('content-encoding')
+            response.headers.removeHeader(b'content-encoding')
         return response
 
 
@@ -1975,13 +1974,13 @@ class RedirectAgent(object):
         Handle the response, making another request if it indicates a redirect.
         """
         if response.code in self._redirectResponses:
-            if method not in ('GET', 'HEAD'):
+            if method not in (b'GET', b'HEAD'):
                 err = error.PageRedirect(response.code, location=uri)
                 raise ResponseFailed([failure.Failure(err)], response)
             return self._handleRedirect(response, method, uri, headers,
                                         redirectCount)
         elif response.code in self._seeOtherResponses:
-            return self._handleRedirect(response, 'GET', uri, headers,
+            return self._handleRedirect(response, b'GET', uri, headers,
                                         redirectCount)
         return response
 

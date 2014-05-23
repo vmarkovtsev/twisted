@@ -244,7 +244,8 @@ almostModules = [
     "twisted.test.reflect_helper_ZDE",
     # Required by some of the ported trial tests:
     "twisted.trial.reporter",
-    # Agent code and downloadPage aren't ported, test coverage isn't complete:
+    # test coverage isn't complete:
+    "twisted.web._newclient",
     "twisted.web.client",
     # twisted.web.resource depends on twisted.web.error, so it is sorta
     # ported, but its tests are not yet ported, so it probably doesn't
