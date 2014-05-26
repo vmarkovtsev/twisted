@@ -444,12 +444,12 @@ class HTTPDownloader(HTTPClientFactory):
     value = None
 
     def __init__(self, url, fileOrName,
-                 method='GET', postdata=None, headers=None,
-                 agent="Twisted client", supportPartial=0,
+                 method=b'GET', postdata=None, headers=None,
+                 agent=b"Twisted client", supportPartial=0,
                  timeout=0, cookies=None, followRedirect=1,
                  redirectLimit=20, afterFoundGet=False):
         self.requestedPartial = 0
-        if isinstance(fileOrName, types.StringTypes):
+        if isinstance(fileOrName, types.StringTypes if not _PY3 else str):
             self.fileName = fileOrName
             self.file = None
             if supportPartial and os.path.exists(self.fileName):
