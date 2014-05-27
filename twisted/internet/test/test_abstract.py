@@ -10,7 +10,40 @@ from __future__ import division, absolute_import
 
 from twisted.trial.unittest import SynchronousTestCase
 
-from twisted.internet.abstract import isIPv6Address
+from twisted.internet.abstract import isIPAddress, isIPv6Address
+
+
+class IPAddressTests(SynchronousTestCase):
+    """
+    Tests for L{isIPAddress}, a function for determining if a particular
+    string is an IPv4 address literal.
+    """
+    def test_empty(self):
+        """
+        The empty string is not an IPv6 address literal.
+        """
+        self.assertFalse(isIPAddress(""))
+
+
+    def test_colon(self):
+        """
+        A single C{":"} is not an IPv6 address literal.
+        """
+        self.assertFalse(isIPAddress(":"))
+
+
+    def test_loopback(self):
+        """
+        C{"::1"} is the IPv6 loopback address literal.
+        """
+        self.assertTrue(isIPAddress("127.0.0.1"))
+        
+    def test_Bytes(self):
+        """
+        Bytes should still be accepted and decoded inside the function.
+        """
+        self.assertTrue(isIPAddress(b"192.168.0.1"))
+
 
 class IPv6AddressTests(SynchronousTestCase):
     """
@@ -56,3 +89,9 @@ class IPv6AddressTests(SynchronousTestCase):
         self.assertFalse(isIPv6Address("%eth0"))
         self.assertFalse(isIPv6Address(":%eth0"))
         self.assertFalse(isIPv6Address("hello%eth0"))
+        
+    def test_Bytes(self):
+        """
+        Bytes should still be accepted and decoded inside the function.
+        """
+        self.assertTrue(isIPv6Address(b"2607:f0d0:1002:51::4"))
