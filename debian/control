@@ -9,13 +9,13 @@ Build-Depends: debhelper (>=7.0.50~),
 XS-Python-Version: all
 Standards-Version: 3.9.4
 
-Package: python3-twisted-experimental
+Package: python3-twisted
 Architecture: all
 Depends: ${python3:Depends}, python3-zope.interface (>= 3.6), ${misc:Depends}
 Suggests: python3-tk, python3-gtk2, python3-glade2, python3-qt3, python3-wxgtk2.8
 Recommends: python3-openssl, python3-pam, python3-serial
-Conflicts: python3-twisted-core
-Replaces: python3-twisted-core
+Conflicts: python3-twisted-core, python3-twisted-experimental
+Replaces: python3-twisted-core, python3-twisted-experimental
 Description: Event-based framework for internet applications
  It includes a web server, a telnet server, a multiplayer RPG engine, a
  generic client and server for remote object access, and APIs for creating

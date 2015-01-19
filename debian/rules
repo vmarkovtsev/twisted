@@ -51,10 +51,10 @@ install-prereq: build-stamp
 install3-python%: install-prereq
 	: # python3-twisted-core
 	python$* setup.py install \
-		--root=$(CURDIR)/debian/python3-twisted-experimental --install-layout=deb
+		--root=$(CURDIR)/debian/python3-twisted --install-layout=deb
 
-	-find debian/python3-twisted-experimental -name '*.py[co]' | xargs rm -f
-	-find debian/python3-twisted-experimental -name '__pycache__' | xargs rm -rf
+	-find debian/python3-twisted -name '*.py[co]' | xargs rm -f
+	-find debian/python3-twisted -name '__pycache__' | xargs rm -rf
 ifeq (0,1)
 	rm -rf debian/python3-twisted-core/usr/lib/python$*/*-packages/twisted/python/pymodules
 
@@ -78,10 +78,10 @@ ifeq (0,1)
 		> debian/python-twisted/$(call py_libdir,$*)/Twisted-$(twversion).egg-info
 endif
 endif
-	mkdir -p debian/python3-twisted-experimental/usr/bin
+	mkdir -p debian/python3-twisted/usr/bin
 	cd bin && \
 	for i in {manhole,*tap*,trial,twistd,pyhtmlizer} {conch,lore,mail}; do \
-	  cp -r $$i "../debian/python3-twisted-experimental/usr/bin/$$i""3"; \
+	  cp -r $$i "../debian/python3-twisted/usr/bin/$$i""3"; \
 	done; \
 	cd ..
 

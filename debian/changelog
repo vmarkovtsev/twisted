@@ -1,3 +1,9 @@
+twisted-py3 (14.0.0-2veles1) trusty; urgency=high
+
+  * Separate from python3-twisted-experimental
+
+ -- Vadim Markovtsev <v.markovtsev@samsung.com>  Mon, 20 Jan 2015 11:22:00 +0400
+
 twisted-py3 (14.0.0-0veles1) trusty; urgency=high
 
   * New upstream changes
@@ -20,7 +26,7 @@ twisted-py3 (13.0.0-0ubuntu2) raring; urgency=low
 
 twisted-py3 (13.0.0-0ubuntu1) raring; urgency=low
 
-  * Build a python3-twisted-experimental package.
+  * Build a python3-twisted package.
 
  -- Matthias Klose <doko@ubuntu.com>  Thu, 04 Apr 2013 10:26:18 +0200
 
