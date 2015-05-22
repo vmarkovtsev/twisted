@@ -1,3 +1,10 @@
+twisted-py3 (15.2.0-0veles1) trusty; urgency=high
+
+  * Ported twisted.python.urlpath
+  * Rebased on trunk after 15.2.0
+
+ -- Vadim Markovtsev <v.markovtsev@samsung.com>  Mon, 20 Jan 2015 11:22:00 +0400
+
 twisted-py3 (14.0.0-2veles1) trusty; urgency=high
 
   * Separate from python3-twisted-experimental

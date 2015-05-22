@@ -122,7 +122,7 @@ class URLPath(object):
         x = urlparse.urlunsplit((
             self.scheme, self.netloc, self.path,
             self.query, self.fragment))
-        return x
+        return x.decode('charmap')
 
     def __repr__(self):
         return ('URLPath(scheme=%r, netloc=%r, path=%r, query=%r, fragment=%r)'
